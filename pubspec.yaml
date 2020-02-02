@@ -1,8 +1,8 @@
 name: flutter_stage
-description: A new Flutter package project.
+description: A widget that positions its children in a 3D scene.
 version: 0.0.1
-author:
-homepage:
+author: Zebiao Hu <zesage@gmail.com>
+homepage: https://github.com/zesage/flutter_stage
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  vector_math: any
 
 dev_dependencies:
   flutter_test:
