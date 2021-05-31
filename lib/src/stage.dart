@@ -5,9 +5,9 @@ typedef void SceneCreatedCallback(Scene scene);
 
 class Stage extends StatefulWidget {
   Stage({
-    Key key,
+    Key? key,
     this.interactive = true,
-    this.onSceneCreated,
+    required this.onSceneCreated,
     this.children = const <Actor>[],
   }) : super(key: key);
 
@@ -20,8 +20,8 @@ class Stage extends StatefulWidget {
 }
 
 class _StageState extends State<Stage> {
-  Scene scene;
-  Offset _lastFocalPoint;
+  late Scene scene;
+  late Offset _lastFocalPoint;
 
   void _handleScaleStart(ScaleStartDetails details) {
     _lastFocalPoint = details.localFocalPoint;
@@ -29,15 +29,16 @@ class _StageState extends State<Stage> {
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
     if (details.scale != 1.0) {
-      scene.camera.position.scale(1.0 + (1.0 - details.scale) * 0.01);
+      scene.camera!.position.scale(1.0 + (1.0 - details.scale) * 0.01);
     }
-    scene.camera.trackBall(_lastFocalPoint, details.localFocalPoint, 1.5);
+    scene.camera!.trackBall(_lastFocalPoint, details.localFocalPoint, 1.5);
     _lastFocalPoint = details.localFocalPoint;
     setState(() {});
   }
 
   /// Transform from homonegenous coordinates to the normalized device coordinates，and then transform to viewport.
-  void applyViewportTransform(Vector4 v, double viewportWidth, double viewportHeight) {
+  void applyViewportTransform(
+      Vector4 v, double viewportWidth, double viewportHeight) {
     final storage = v.storage;
     //perspective division,
     final double w = storage[3];
@@ -53,7 +54,8 @@ class _StageState extends State<Stage> {
     final Matrix4 _transform = transform * actor.transform;
     final Vector4 v = Vector4.identity();
     v.applyMatrix4(_transform);
-    applyViewportTransform(v, scene.camera.viewportWidth, scene.camera.viewportHeight);
+    applyViewportTransform(
+        v, scene.camera!.viewportWidth, scene.camera!.viewportHeight);
     v.xyz.copyInto(actor.transformedPosition);
     _transform.copyInto(actor.transformedMatrix);
     list.add(actor);
@@ -73,18 +75,19 @@ class _StageState extends State<Stage> {
   void initState() {
     super.initState();
     scene = Scene(onUpdate: () => setState(() {}), children: widget.children);
-    if (widget.onSceneCreated != null) widget.onSceneCreated(scene);
+    widget.onSceneCreated(scene);
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        scene.camera.viewportWidth = constraints.maxWidth;
-        scene.camera.viewportHeight = constraints.maxHeight;
-        final List<Actor> children = List<Actor>();
-        final Matrix4 transform = scene.camera.projectionMatrix * scene.camera.transform;
-        transformActor(children, scene.world, transform);
+        scene.camera!.viewportWidth = constraints.maxWidth;
+        scene.camera!.viewportHeight = constraints.maxHeight;
+        final List<Actor> children = [];
+        final Matrix4 transform =
+            scene.camera!.projectionMatrix * scene.camera!.transform;
+        transformActor(children, scene.world!, transform);
 
         children.sort((Actor a, Actor b) {
           final double az = a.transformedPosition.z;
@@ -94,7 +97,7 @@ class _StageState extends State<Stage> {
           return 0;
         });
 
-        List<Widget> widgets = List<Widget>();
+        List<Widget> widgets = [];
         for (int i = 0; i < children.length; i++) {
           final Actor child = children[i];
           final newChild = Positioned(
@@ -103,7 +106,8 @@ class _StageState extends State<Stage> {
             width: child.width,
             height: child.height,
             child: Transform(
-              origin: Offset(child.width * child.orgin.dx, child.height * child.orgin.dy),
+              origin: Offset(
+                  child.width * child.orgin.dx, child.height * child.orgin.dy),
               transform: child.transformedMatrix,
               child: child.widget,
             ),
@@ -125,37 +129,37 @@ class _StageState extends State<Stage> {
 }
 
 class Scene {
-  Scene({VoidCallback onUpdate, List<Actor> children}) {
+  Scene({VoidCallback? onUpdate, required List<Actor> children}) {
     this._onUpdate = onUpdate;
     camera = Camera();
     world = Actor(children: children);
   }
 
-  Camera camera;
-  Actor world;
-  VoidCallback _onUpdate;
+  Camera? camera;
+  Actor? world;
+  VoidCallback? _onUpdate;
 
   void _updateChildren(List<Actor> children) {
     world = Actor(children: children);
   }
 
   void update() {
-    if (_onUpdate != null) _onUpdate();
+    if (_onUpdate != null) _onUpdate!();
   }
 }
 
 class Actor {
   Actor({
     this.name,
-    Vector3 position,
-    Vector3 rotation,
-    Vector3 scale,
+    Vector3? position,
+    Vector3? rotation,
+    Vector3? scale,
     this.orgin = const Offset(0.5, 0.5),
     this.width = 100,
     this.height = 100,
     this.widget,
     this.parent,
-    List<Actor> children,
+    List<Actor>? children,
   }) {
     if (position != null) position.copyInto(this.position);
     if (rotation != null) rotation.copyInto(this.rotation);
@@ -168,7 +172,7 @@ class Actor {
   }
 
   /// The name of this actor.
-  String name;
+  String? name;
 
   /// The local position of this actor relative to the parent. Default is Vector3(0.0, 0.0, 0.0). updateTransform after you change the value.
   final Vector3 position = Vector3(0.0, 0.0, 0.0);
@@ -189,10 +193,10 @@ class Actor {
   double height;
 
   /// The parent of this actor.
-  Actor parent;
+  Actor? parent;
 
-  Widget widget;
-  final List<Actor> children = List<Actor>();
+  Widget? widget;
+  final List<Actor> children = [];
 
   /// The transformation of the actor in the scene, including position, rotation, and scaling.
   final Matrix4 transform = Matrix4.identity();
@@ -201,15 +205,19 @@ class Actor {
   final Matrix4 transformedMatrix = Matrix4.identity();
 
   void updateTransform() {
-    final Matrix4 m = Matrix4.compose(position, Quaternion.euler(radians(rotation.y), radians(rotation.x), radians(rotation.z)), scale);
+    final Matrix4 m = Matrix4.compose(
+        position,
+        Quaternion.euler(
+            radians(rotation.y), radians(rotation.x), radians(rotation.z)),
+        scale);
     transform.setFrom(m);
   }
 
   /// Find a child matching the name
-  Actor find(String name) {
+  Actor? find(String name) {
     for (Actor child in children) {
       if (name == child.name) return child;
-      final Actor result = child.find(name);
+      final Actor? result = child.find(name);
       if (result != null) return result;
     }
     return null;
@@ -218,9 +226,9 @@ class Actor {
 
 class Camera {
   Camera({
-    Vector3 position,
-    Vector3 target,
-    Vector3 up,
+    Vector3? position,
+    Vector3? target,
+    Vector3? up,
     this.fov = 60.0,
     this.near = 0.1,
     this.far = 1000,
@@ -255,16 +263,33 @@ class Camera {
   Matrix4 get projectionMatrix {
     // from https://github.com/wmleler/thematrix
     return Matrix4(
-      1.0, 0.0, 0.0, 0, //
-      0.0, 1.0, 0.0, 0, //
-      0.0, 0.0, -1.0, -0.002, //
-      0.0, 0.0, 0.0, 1.0,
+      1.0,
+      0.0,
+      0.0,
+      0,
+      //
+      0.0,
+      1.0,
+      0.0,
+      0,
+      //
+      0.0,
+      0.0,
+      -1.0,
+      -0.002,
+      //
+      0.0,
+      0.0,
+      0.0,
+      1.0,
     )..scale(zoom);
   }
 
   void trackBall(Offset from, Offset to, [double sensitivity = 1.0]) {
-    final double deltaX = -(to.dx - from.dx) * sensitivity / (viewportWidth * 0.5);
-    final double deltaY = -(to.dy - from.dy) * sensitivity / (viewportHeight * 0.5);
+    final double deltaX =
+        -(to.dx - from.dx) * sensitivity / (viewportWidth * 0.5);
+    final double deltaY =
+        -(to.dy - from.dy) * sensitivity / (viewportHeight * 0.5);
     Vector3 moveDirection = Vector3(deltaX, deltaY, 0);
     final double angle = moveDirection.length;
     if (angle > 0) {
